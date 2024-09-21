@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MLBB Guessing Game</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-800 text-white">
+
+    <div class="min-h-screen flex flex-col items-center justify-center">
+        <h2 class="text-2xl font-bold mb-6">Guess the MLBB Hero!</h2>
+        
+        <!-- Mode Selection -->
+        <div class="mb-6">
+            <label class="block text-lg mb-2">Select Game Mode:</label>
+            <select id="game-mode" class="bg-gray-700 text-white py-2 px-4 rounded-lg">
+                <option value="splash">Splash Art</option>
+                <option value="quote">Quote</option>
+                <option value="ability">Ability</option>
+            </select>
+        </div>
+
+        <!-- Image/Quote/Ability Section -->
+        <div id="content-section" class="mb-4">
+            <img src="" alt="Hero Splash Art" id="hero-img" class="rounded-lg hidden">
+            <p id="hero-quote" class="text-lg hidden"></p>
+            <p id="hero-ability" class="text-lg hidden"></p>
+        </div>
+
+        <!-- Input Section -->
+        <input type="text" id="guess-input" class="bg-gray-700 text-white py-2 px-4 mb-4 rounded-lg" placeholder="Enter Hero Name">
+
+        <!-- Submit Button -->
+        <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded" id="submit-btn">
+            Submit Guess
+        </button>
+
+        <!-- Feedback Section -->
+        <p id="feedback" class="mt-4"></p>
+
+        <!-- Leaderboard Section -->
+        <div id="leaderboard" class="mt-8 hidden">
+            <h3 class="text-2xl font-bold">Leaderboard</h3>
+            <ul id="leaderboard-list" class="mt-4"></ul>
+        </div>
+
+        <!-- Score Submission Section -->
+        <div id="score-section" class="mt-8 hidden">
+            <input type="text" id="username-input" class="bg-gray-700 text-white py-2 px-4 mb-4 rounded-lg" placeholder="Enter your name">
+            <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" id="submit-score-btn">
+                Submit Score
+            </button>
+        </div>
+    </div>
+<!-- Add a Timer Display -->
+<p id="timer" class="text-lg mb-4"></p>
+
+<script>
+    let correctAnswer = "";
+    let playerScore = 0;
+    let startTime;
+
+    // Start timer when hero is fetched
+    function startTimer() {
+        startTime = new Date().getTime();
+        document.getElementById('timer').textContent = "Time: 0s";
+        const timerInterval = setInterval(() => {
+            const now = new Date().getTime();
+            const elapsed = Math.floor((now - startTime) / 1000);
+            document.getElementById('timer').textContent = `Time: ${elapsed}s`;
+        }, 1000);
+        return timerInterval;
+    }
+
+    // Stop timer and calculate score based on time
+    function stopTimer(timerInterval) {
+        clearInterval(timerInterval);
+        const endTime = new Date().getTime();
+        const elapsed = Math.floor((endTime - startTime) / 1000);
+        const scoreMultiplier = Math.max(10 - elapsed, 1); // Score decreases over time, minimum 1 point
+        playerScore += scoreMultiplier; // Add score multiplier
+        return elapsed;
+    }
+
+    // Fetch random hero and start the timer
+    function fetchRandomHero() {
+        const gameMode = document.getElementById('game-mode').value;
+        fetch(`http://localhost:3000/random-hero?type=${gameMode}`)
+            .then(response => response.json())
+            .then(hero => {
+                correctAnswer = hero.name.toLowerCase();
+                
+                // Update content based on game mode
+                if (gameMode === 'splash') {
+                    document.getElementById('hero-img').src = hero.splashArt;
+                    document.getElementById('hero-img').classList.remove('hidden');
+                    document.getElementById('hero-quote').classList.add('hidden');
+                    document.getElementById('hero-ability').classList.add('hidden');
+                } else if (gameMode === 'quote') {
+                    document.getElementById('hero-quote').textContent = hero.quote;
+                    document.getElementById('hero-quote').classList.remove('hidden');
+                    document.getElementById('hero-img').classList.add('hidden');
+                    document.getElementById('hero-ability').classList.add('hidden');
+                } else if (gameMode === 'ability') {
+                    document.getElementById('hero-ability').textContent = hero.ability;
+                    document.getElementById('hero-ability').classList.remove('hidden');
+                    document.getElementById('hero-img').classList.add('hidden');
+                    document.getElementById('hero-quote').classList.add('hidden');
+                }
+                
+                // Start timer
+                const timerInterval = startTimer();
+
+                // Submit guess
+                document.getElementById('submit-btn').addEventListener('click', function() {
+                    const guess = document.getElementById('guess-input').value.toLowerCase();
+                    
+                    if (guess === correctAnswer) {
+                        document.getElementById('feedback').textContent = "Correct!";
+                        document.getElementById('feedback').classList.add('text-green-500');
+                        
+                        const elapsedTime = stopTimer(timerInterval); // Stop timer and get elapsed time
+                        playerScore += Math.max(10 - elapsedTime, 1); // Add points based on speed
+                        document.getElementById('score-section').classList.remove('hidden');
+                    } else {
+                        document.getElementById('feedback').textContent = "Incorrect, try again!";
+                        document.getElementById('feedback').classList.add('text-red-500');
+                    }
+                });
+            });
+    }
+
+    // Load random hero and leaderboard when the page loads
+    window.onload = () => {
+        fetchRandomHero();
+        loadLeaderboard();
+    };
+    
+    // Load a new hero when the game mode changes
+    document.getElementById('game-mode').addEventListener('change', fetchRandomHero);
+</script>
+
+    <script>
+        let correctAnswer = "";
+        let playerScore = 0;
+
+        // Fetch random hero based on selected game mode
+        function fetchRandomHero() {
+            const gameMode = document.getElementById('game-mode').value;
+            fetch(`http://localhost:3000/random-hero?type=${gameMode}`)
+                .then(response => response.json())
+                .then(hero => {
+                    correctAnswer = hero.name.toLowerCase();
+                    
+                    // Update content based on game mode
+                    if (gameMode === 'splash') {
+                        document.getElementById('hero-img').src = hero.splashArt;
+                        document.getElementById('hero-img').classList.remove('hidden');
+                        document.getElementById('hero-quote').classList.add('hidden');
+                        document.getElementById('hero-ability').classList.add('hidden');
+                    } else if (gameMode === 'quote') {
+                        document.getElementById('hero-quote').textContent = hero.quote;
+                        document.getElementById('hero-quote').classList.remove('hidden');
+                        document.getElementById('hero-img').classList.add('hidden');
+                        document.getElementById('hero-ability').classList.add('hidden');
+                    } else if (gameMode === 'ability') {
+                        document.getElementById('hero-ability').textContent = hero.ability;
+                        document.getElementById('hero-ability').classList.remove('hidden');
+                        document.getElementById('hero-img').classList.add('hidden');
+                        document.getElementById('hero-quote').classList.add('hidden');
+                    }
+                });
+        }
+
+        // Submit guess
+        document.getElementById('submit-btn').addEventListener('click', function() {
+            const guess = document.getElementById('guess-input').value.toLowerCase();
+            
+            if (guess === correctAnswer) {
+                document.getElementById('feedback').textContent = "Correct!";
+                document.getElementById('feedback').classList.add('text-green-500');
+                playerScore++; // Increment score on correct guess
+                document.getElementById('score-section').classList.remove('hidden');
+            } else {
+                document.getElementById('feedback').textContent = "Incorrect, try again!";
+                document.getElementById('feedback').classList.add('text-red-500');
+            }
+        });
+
+        // Submit score to the leaderboard
+        document.getElementById('submit-score-btn').addEventListener('click', function() {
+            const username = document.getElementById('username-input').value;
+            fetch('http://localhost:3000/submit-score', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, score: playerScore })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                loadLeaderboard();
+            });
+        });
+
+        // Load leaderboard from the backend
+        function loadLeaderboard() {
+            fetch('http://localhost:3000/leaderboard')
+                .then(response => response.json())
+                .then(data => {
+                    const leaderboardList = document.getElementById('leaderboard-list');
+                    leaderboardList.innerHTML = ""; // Clear existing leaderboard
+                    data.forEach((entry, index) => {
+                        const listItem = document.createElement('li');
+                        listItem.textContent = `${index + 1}. ${entry.username} - ${entry.score} points`;
+                        leaderboardList.appendChild(listItem);
+                    });
+                    document.getElementById('leaderboard').classList.remove('hidden');
+                });
+        }
+
+        // Load random hero and leaderboard when the page loads
+        window.onload = () => {
+            fetchRandomHero();
+            loadLeaderboard();
+        };
+        
+        // Load a new hero when the game mode changes
+        document.getElementById('game-mode').addEventListener('change', fetchRandomHero);
+        
+    </script>
+</body>
+</html>
